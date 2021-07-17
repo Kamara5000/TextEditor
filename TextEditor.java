@@ -242,7 +242,11 @@ public class TextEditor implements ActionListener  {
         JMenuItem find = new JMenuItem("Find", 'F');
         //find.setAccelerator(KeyStroke.getKeyStroke('F', Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(), false));
         find.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK));
-        find.addActionListener(this);
+        find.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                findText();
+            }
+        });
         editMenu.add(find);
 
         JMenuItem findNext = new JMenuItem("Find Next");
@@ -411,6 +415,40 @@ public class TextEditor implements ActionListener  {
         }
         
     }
+
+    public void findText(){
+        JDialog findR = new JDialog();
+        findR.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        findR.setLayout(new GridLayout(2,1));
+        findR.setSize(400, 150);
+        findR.setLocation(500,300);
+        findText =  new JTextField("Enter the text to find",20);
+        findR.setTitle("Find");
+        final JButton find = new JButton("Find");
+        find.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent ae){
+                try {
+                    String search = findText.getText();
+                    int n = page.getText().indexOf(search);
+                    page.select(n, n+search.length());
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(null,"No text is selected");
+                }
+            }
+        });
+
+        
+
+        JPanel panel = new JPanel();
+       
+        panel.add(find);
+        findR.add(findText);
+        findR.add(panel);
+        findR.setVisible(true);
+
+
+    } 
 
     public void findAndReplace(){
         JDialog findR = new JDialog();
