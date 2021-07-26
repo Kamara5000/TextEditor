@@ -1,19 +1,32 @@
 import javax.swing.*;
+//import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.util.*;
+import java.util.List;
 import java.awt.print.PrinterJob;
+import java.net.*;
+import java.text.SimpleDateFormat;
+//import javax.swing.event.CaretListener;
+//import javax.swing.event.CaretEvent;
 
-public class TextEditor implements ActionListener  {
+public class TextEditor implements ActionListener, ListSelectionListener, CaretListener  {
     JTextArea area, page;
     //JTextPane page;
     int pageNumber=1;
     String path;
     JFrame frame;
-    JTextField findText, replaceText;
+    JTextField findText, replaceText, val1;
+    JList myList;
+    JLabel statusBar;
+    int linenum = 1, word=1, columnnum=1, linenumber, columnnumber;
+    String text="", words[];
+    JPanel statusPanel;
+
 
     public TextEditor(){
         frame = new JFrame();
@@ -254,6 +267,23 @@ public class TextEditor implements ActionListener  {
         findNext.addActionListener(this);
         editMenu.add(findNext);
 
+        JMenuItem findWithG = new JMenuItem("Find with Google");
+        findWithG.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK));
+        findWithG.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+               try {
+                  if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().browse(URI.create("www.google.com"));
+                  }else{
+                    JOptionPane.showMessageDialog(null, "System not supported");
+                  }
+               } catch (Exception e) {
+                  JOptionPane.showMessageDialog(null, "not able to open url");
+               }
+            }
+        });
+        editMenu.add(findWithG);
+
         JMenuItem repl = new JMenuItem("Replace...");
         //repl.setAccelerator(KeyStroke.getKeyStroke('H', Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(), false));
         repl.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_DOWN_MASK));
@@ -264,10 +294,18 @@ public class TextEditor implements ActionListener  {
         });
         editMenu.add(repl);
 
-        JMenuItem goTo = new JMenuItem("Go To...", 'G');
+        JMenuItem goTo = new JMenuItem("Go To...");
         //goTo.setAccelerator(KeyStroke.getKeyStroke('G', Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(), false));
         goTo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_DOWN_MASK));
-        goTo.addActionListener(this);
+        goTo.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+               try {
+                  goToLine();
+               } catch (Exception e) {
+                  JOptionPane.showMessageDialog(null, "not able to find line");
+               }
+            }
+        });
         editMenu.add(goTo);
 
         editMenu.addSeparator();
@@ -275,33 +313,124 @@ public class TextEditor implements ActionListener  {
         JMenuItem selAll = new JMenuItem("Select All", 'A');
         //selAll.setAccelerator(KeyStroke.getKeyStroke('A', Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(), false));
         selAll.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_DOWN_MASK));
-        selAll.addActionListener(this);
+        selAll.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent ae){
+                page.selectAll();
+            }
+        });
         editMenu.add(selAll);
 
         JMenuItem tD = new JMenuItem("Time/Date");
         tD.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0));
-        tD.addActionListener(this);
+        tD.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                // String date = new Date().toString();
+                String date = new SimpleDateFormat("hh:mm:ss yyy/MM/dd ").format(new Date());
+                page.setText(date); 
+            }
+        });
         editMenu.add(tD);
 
         menuContainer.add(editMenu);
 
         JMenu formatMenu = new JMenu("Format");
         formatMenu.setMnemonic(KeyEvent.VK_F1);
-        JMenuItem wordWrap = new JMenuItem("Word Wrap");
-        wordWrap.addActionListener(this);
+        
+        final JCheckBoxMenuItem wordWrap = new JCheckBoxMenuItem("Word Wrap");
+        wordWrap.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                boolean checkState = wordWrap.isSelected();
+                if (checkState == true) {
+                    page.setLineWrap(true);
+                    page.setWrapStyleWord(true);
+                    
+                } else {
+                    page.setLineWrap(false);
+                    page.setWrapStyleWord(false);
+                }
+            }
+        });
         formatMenu.add(wordWrap);
 
         JMenuItem font = new JMenuItem("Font...");
-        font.addActionListener(this);
+        font.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                //font();
+
+            }
+        });
         formatMenu.add(font);
 
         menuContainer.add(formatMenu);
 
         JMenu viewMenu = new JMenu("View");
         viewMenu.setMnemonic(KeyEvent.VK_V);
-        JMenuItem status = new JMenuItem("Status Bar");
-        status.addActionListener(this);
+        final JCheckBoxMenuItem status = new JCheckBoxMenuItem("Status Bar");
+        status.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent ae){
+                boolean checkState = status.isSelected();
+                if (checkState) {
+                    //give the status a value
+                    updateStatus(linenumber, columnnumber, word, text);
+                    statusPanel.add(statusBar);
+                    statusPanel.repaint();
+                } else {
+                    statusPanel.remove(statusBar);
+                    statusPanel.repaint();
+                }
+            }
+        });
         viewMenu.add(status);
+
+        JMenu zoom = new JMenu("Zoom");
+        JMenuItem zoomIn = new JMenuItem("Zoom In");
+        //zoomIn.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_+, ActionEvent.CTRL_MASK));
+        zoomIn.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                Font font = page.getFont();
+
+                if (font.getSize() <  200) {
+                    page.setFont(new Font(null,0,font.getSize()+10));
+                    frame.validate();
+                } else {
+                    JOptionPane.showMessageDialog(null, "zoom cannot go above maximum zoom level");
+                }
+            }
+        });
+
+        zoom.add(zoomIn);
+
+        JMenuItem zoomOut = new JMenuItem("Zoom out");
+        //zoomOut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_+, ActionEvent.CTRL_MASK));
+        zoomOut.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                Font font = page.getFont();
+
+                if (font.getSize() >= 20) {
+                    page.setFont(new Font(null,0,font.getSize()-10));
+                    //frame.validate();
+                } else {
+                    JOptionPane.showMessageDialog(null, "zoom cannot go below minimum zoom level");
+                }
+            }
+        }); 
+        zoom.add(zoomOut);
+
+        JMenuItem defaultZoom = new JMenuItem("Restore default zoom");
+        //zoomOut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_+, ActionEvent.CTRL_MASK));
+        defaultZoom.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                page.setFont(new Font(null,0,20));
+                frame.validate();
+            }
+        });
+
+        zoom.add(defaultZoom);
+        
+        viewMenu.add(status);
+        viewMenu.add(zoom);
 
         menuContainer.add(viewMenu);
 
@@ -320,18 +449,40 @@ public class TextEditor implements ActionListener  {
         
          frame.add(menuContainer, BorderLayout.NORTH);
 
+
         //page = new JTextPane();
 
         page = new JTextArea();
         page.setSize(1000,500);
-        page.setFont(new Font("serrif",  Font.BOLD, 20));
+        page.setFont(new Font("serrif",  Font.PLAIN, 20));
         frame.add(page);
-        // area = new JTextArea(1000,400);
-        // area.setFont(new Font("serrif",  Font.BOLD, 20));
-        //frame.add(area);
-        //frame.add(new JScrollPane(area));
         frame.add(new JScrollPane(page));
-        
+
+        statusBar = new JLabel("Line: "+linenumber+ " Column: " + columnnumber+" Characters: "+text.length()+ " Words: "+word+ "     ");
+        statusPanel = new JPanel(new FlowLayout());
+        frame.add(statusPanel, BorderLayout.SOUTH);
+        page.addCaretListener(new CaretListener(){
+            @Override
+            public void caretUpdate(CaretEvent ce){
+                JTextArea editArea = (JTextArea)ce.getSource();
+                try {
+                    text = page.getText();
+                    words = text.split(" ");
+                    word = words.length;
+                    int caretpos= editArea.getCaretPosition();
+                    linenum = editArea.getLineOfOffset(caretpos);
+                    columnnum = caretpos - editArea.getLineStartOffset(linenum);
+                    linenum += 1;
+
+                    //this will set the line number
+                } catch (Exception e) {
+                
+                }
+
+                updateStatus(linenum,columnnum,word,text);
+
+            }
+        });
         //frame.pack(); - this will  size the frame base on the component on it
         frame.setVisible(true);
 
@@ -497,6 +648,83 @@ public class TextEditor implements ActionListener  {
         findR.setVisible(true);
 
 
+    }
+
+    public void goToLine(){
+        final JDialog go2 = new JDialog(frame);
+        go2.setSize(200,100);
+        go2.setLocation(200,300);
+        JPanel pa = new JPanel(new BorderLayout());
+        JLabel lb  = new JLabel("Enter line number");
+        pa.add(lb, BorderLayout.NORTH);
+        final JTextField tf = new JTextField(10);
+        pa.add(tf, BorderLayout.CENTER);
+        JButton bn = new JButton("Go to line");
+        bn.setSize(5,5);
+        bn.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent ae){
+                try {
+                    String line = tf.getText();
+                    page.setCaretPosition(page.getDocument().getDefaultRootElement().getElement(Integer.parseInt(line)-1).getStartOffset());
+                    page.requestFocusInWindow();
+                    go2.dispose();
+                } catch (Exception e) {
+                   JOptionPane.showMessageDialog(null,"cannot find line");
+                }
+            }
+        });
+        pa.add(bn , BorderLayout.SOUTH);
+        go2.add(pa);
+        go2.setVisible(true);
+    }
+
+    // public void font(){
+    //     JDialog fnt = new JDialog();
+    //             fnt.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+    //             fnt.setLayout(new GridLayout(2,1));
+    //             fnt.setSize(400, 150);
+    //             fnt.setLocation(500,300);
+    //             String listItems[]= {"name1", "name2", "name3","name4","name5"};
+    //             myList = new JList(listItems);
+    //             myList.setSelectedIndex(2);
+    //             myList.addListSelectionListener(this);
+    //             JScrollPane scroll = new JScrollPane(myList);
+                
+    //             JPanel panel = new JPanel();
+    //             JTextField val1 = new JTextField();
+    //             panel.add(val1);
+    //             fnt.add(panel);
+    //             fnt.add(scroll);
+    //             ///fnt.add(panel);
+    //             fnt.setVisible(true);
+
+    //             // JPanel panel = new JPanel(new BorderLayout());
+    //             // List<String> labels= new ArrayList<>(25);
+    //             // for (int index =0; index < 100; index++){
+    //             //     labels.add("Item " + index);
+    //             // }
+
+    //             // final JList<String> listArea = new JList<>(labels.toArray(new String));
+    //             // listArea.setSelectionModel(ListSelectionModel.SINGLE_SELECTION);
+    //             // listArea.setFont(new Font )
+    // }
+
+    
+    public void valueChanged(ListSelectionEvent lsv){
+        JOptionPane.showMessageDialog(null, myList.getSelectedValue());
+        val1.setText(myList.getSelectedValue().toString());
+        
+    }
+
+    @Override
+    public void caretUpdate(CaretEvent e){
+        throw new UnsupportedOperationException("Not supported yet");
+    }
+    
+    private void updateStatus(int linenumber, int columnnumber, int word, String text){
+        //create and add a status bar here
+        statusBar.setText("Line: "+ linenumber+ " Colomn: "+ columnnumber + " Characters: "+text.length() + " Words: "+word);
     }
     
     public static void main(String[] args) {
