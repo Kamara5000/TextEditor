@@ -21,8 +21,8 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
     String path;
     JFrame frame;
     JTextField findText, replaceText, val1;
-    JList myList;
-    JLabel statusBar;
+    JList myFontList, myFontStyles,myFontSize;
+    JLabel statusBar, myFont,myStyle,mySize;
     int linenum = 1, word=1, columnnum=1, linenumber, columnnumber;
     String text="", words[];
     JPanel statusPanel;
@@ -64,10 +64,12 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
                     //area.setText("");
                      //saveAsFile();
                     page.setText("");
+                    path = null;
                     frame.setTitle("untitled "+ pageNumber+ "- Text Frame");
                     pageNumber ++;
                  }else if (option == 1) {
-                     page.setText("");
+                    page.setText("");
+                    path = null;
                      frame.setTitle("untitled "+ pageNumber+ "- Text Frame");
                      pageNumber ++;
                  }else{
@@ -356,7 +358,7 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
         JMenuItem font = new JMenuItem("Font...");
         font.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                //font();
+                font();
 
             }
         });
@@ -388,11 +390,17 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
         JMenuItem zoomIn = new JMenuItem("Zoom In");
         //zoomIn.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_+, ActionEvent.CTRL_MASK));
         zoomIn.addActionListener(new ActionListener(){
+            @Override
             public void actionPerformed(ActionEvent ae){
                 Font font = page.getFont();
 
                 if (font.getSize() <  200) {
-                    page.setFont(new Font(null,0,font.getSize()+10));
+                    if ( myFont != null && myStyle !=null) {
+                        page.setFont(new Font(myFont.getText(),myStyle.getText().hashCode(),font.getSize()+10));
+                    } else {
+                        page.setFont(new Font(null,0,font.getSize()+10));
+                    }
+                    
                     frame.validate();
                 } else {
                     JOptionPane.showMessageDialog(null, "zoom cannot go above maximum zoom level");
@@ -409,8 +417,12 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
                 Font font = page.getFont();
 
                 if (font.getSize() >= 20) {
-                    page.setFont(new Font(null,0,font.getSize()-10));
-                    //frame.validate();
+                    if ( myFont != null && myStyle != null) {
+                        page.setFont(new Font(myFont.getText(),myStyle.getText().hashCode(),font.getSize()-10));
+                    } else {
+                        page.setFont(new Font(null,0,font.getSize()-10));
+                    }
+                    frame.validate();
                 } else {
                     JOptionPane.showMessageDialog(null, "zoom cannot go below minimum zoom level");
                 }
@@ -422,7 +434,7 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
         //zoomOut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_+, ActionEvent.CTRL_MASK));
         defaultZoom.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                page.setFont(new Font(null,0,20));
+                page.setFont(new Font(null,0,14));
                 frame.validate();
             }
         });
@@ -548,21 +560,24 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
     }
 
     public void saveFile(){
-        //JFileChooser fsave = new JFileChooser();
-        //String myPath = fsave.getSelectedFile().getPath();
-
-        File myFile = new File(path);
-
-        if (myFile.exists()) {
-            
-             try {
-                BufferedWriter out = new BufferedWriter(new FileWriter(myFile.getPath()));
-                out.write(page.getText());
-                out.close();
-            } catch (Exception ex) {
-                //TODO: handle exception\
-                JOptionPane.showMessageDialog(null, ex.getMessage());
+        try {
+            if (path == null) {
+                saveAsFile();
             }
+            else{
+                File myFile = new File(path);
+                if (myFile.exists()) {
+                    BufferedWriter out = new BufferedWriter(new FileWriter(myFile.getPath()));
+                    out.write(page.getText());
+                    out.close();
+                }
+                
+                
+            }
+        }catch (Exception ex) {
+           
+            //TODO: handle exception\
+            JOptionPane.showMessageDialog(null, ex.getMessage());
         }
         
     }
@@ -679,41 +694,144 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
         go2.setVisible(true);
     }
 
-    // public void font(){
-    //     JDialog fnt = new JDialog();
-    //             fnt.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-    //             fnt.setLayout(new GridLayout(2,1));
-    //             fnt.setSize(400, 150);
-    //             fnt.setLocation(500,300);
-    //             String listItems[]= {"name1", "name2", "name3","name4","name5"};
-    //             myList = new JList(listItems);
-    //             myList.setSelectedIndex(2);
-    //             myList.addListSelectionListener(this);
-    //             JScrollPane scroll = new JScrollPane(myList);
+    public void font(){
+        final JDialog fnt = new JDialog();
+                fnt.setTitle("Font");
+                fnt.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+                fnt.setLayout(new BorderLayout());
+                fnt.setSize(400, 350);
+                fnt.setLocation(500,300);
+                String[] fontList= {"Arial", "Calibri", "Century","Elephant","Impact"};
+                String[] fontStyles= {"Bold", "Regular", "Oblique", "Bold Oblique"};
+                String[] fontSize= {"8","9","10","11","12","14","16","18","20","22"};
+
+               myFont = new JLabel();
+               mySize = new JLabel();
+               myStyle = new JLabel();
+                val1 = new JTextField("Calibri",10);
+                JTextField val2 = new JTextField("Bold", 10);
+                JTextField val3 = new JTextField("18",5);
                 
-    //             JPanel panel = new JPanel();
-    //             JTextField val1 = new JTextField();
-    //             panel.add(val1);
-    //             fnt.add(panel);
-    //             fnt.add(scroll);
-    //             ///fnt.add(panel);
-    //             fnt.setVisible(true);
+                myFontList = new JList(fontList);
+                myFontList.setSelectedIndex(2);
+                myFontList.addListSelectionListener(new ListSelectionListener(){
+                    public void valueChanged(ListSelectionEvent lsv){
+                        // val1 = new JTextField(myFontList.getSelectedValue().toString());
+                        val1.setText(myFontList.getSelectedValue().toString());
+                        myFont.setText(myFontList.getSelectedValue().toString());
+                        //JOptionPane.showMessageDialog(null, myFontList.getSelectedValue());
+                      
+                    }
+                    
+                });
+                JScrollPane fontScroll = new JScrollPane(myFontList);
+                fontScroll.setPreferredSize(new Dimension(100,150));
 
-    //             // JPanel panel = new JPanel(new BorderLayout());
-    //             // List<String> labels= new ArrayList<>(25);
-    //             // for (int index =0; index < 100; index++){
-    //             //     labels.add("Item " + index);
-    //             // }
+                myFontStyles = new JList(fontStyles);
+                myFontStyles.setSelectedIndex(2);
+                myFontStyles.addListSelectionListener(new ListSelectionListener(){
+                    public void valueChanged(ListSelectionEvent lsv){
+                        val2.setText(myFontStyles.getSelectedValue().toString());
+                       
+                        //JOptionPane.showMessageDialog(null, myFontList.getSelectedValue());
+                      
+                    }
+                    
+                });
+                JScrollPane stylesScroll = new JScrollPane(myFontStyles);
+                stylesScroll.setPreferredSize(new Dimension(100,150));
 
-    //             // final JList<String> listArea = new JList<>(labels.toArray(new String));
-    //             // listArea.setSelectionModel(ListSelectionModel.SINGLE_SELECTION);
-    //             // listArea.setFont(new Font )
-    // }
+                myFontSize = new JList(fontSize);
+                myFontSize.setSelectedIndex(2);
+                myFontSize.addListSelectionListener(new ListSelectionListener(){
+                    public void valueChanged(ListSelectionEvent lsv){
+                        val3.setText(myFontSize.getSelectedValue().toString());
+                        //JOptionPane.showMessageDialog(null, myFontList.getSelectedValue());
+                      
+                    }
+                    
+                });
+                JScrollPane sizeScroll = new JScrollPane(myFontSize);
+                sizeScroll.setPreferredSize(new Dimension(100,150));
+                
+               
+                JPanel panel = new JPanel( new FlowLayout());
+                
+                JLabel fontH = new JLabel("Font:");
+                JPanel panel1 = new JPanel(new BorderLayout());
+                panel1.add(fontH, BorderLayout.NORTH);
+                panel1.add(val1, BorderLayout.CENTER);
+                panel1.add(fontScroll, BorderLayout.SOUTH);                
+                
+                JLabel styleH = new JLabel("Font Style:");
+                JPanel panel2= new JPanel(new BorderLayout());
+                panel2.add(styleH, BorderLayout.NORTH);
+                panel2.add(val2, BorderLayout.CENTER);
+                panel2.add(stylesScroll, BorderLayout.SOUTH);  
+                
+                JLabel sizeH = new JLabel("Font Size:");
+                JPanel panel3= new JPanel(new BorderLayout());
+                panel3.add(sizeH, BorderLayout.NORTH);
+                panel3.add(val3, BorderLayout.CENTER);
+                panel3.add(sizeScroll, BorderLayout.SOUTH); 
+                
+                panel.add(panel1);
+                panel.add(panel2);
+                panel.add(panel3);
 
-    
+                fnt.add(panel, BorderLayout.NORTH);
+
+
+              JPanel preview = new JPanel(new BorderLayout());
+              JPanel previewSample = new JPanel(new FlowLayout());
+              previewSample.setBorder(BorderFactory.createTitledBorder("Sample"));
+              previewSample.setPreferredSize(new Dimension(200,10));
+              JLabel fontPreview = new JLabel("hello");
+              previewSample.add(fontPreview);
+              preview.add(previewSample, BorderLayout.EAST);
+              fnt.add(preview, BorderLayout.CENTER);
+                
+
+
+                JButton ok = new JButton("Ok");
+                ok.addActionListener(new ActionListener(){
+                    @Override
+                    public void actionPerformed(ActionEvent ae){
+                        page.setFont(new Font(myFontList.getSelectedValue().toString(), myFontStyles.getSelectedValue().hashCode(),myFontSize.getSelectedValue().hashCode()));
+                        // page.setFont(new Font("",plain.BOLD,20));
+                        
+                        fnt.dispose();
+                    }
+                }); 
+                JButton cancel = new JButton("Cancel");
+                ok.addActionListener(new ActionListener(){
+                    @Override
+                    public void actionPerformed(ActionEvent ae){
+                        fnt.dispose();
+                    }
+                }); 
+                ///fnt.add(panel);
+                
+                JPanel okPanel = new JPanel( new BorderLayout());
+                JPanel okPanel2 = new JPanel(new FlowLayout());
+                okPanel2.add(ok);
+                okPanel2.add(cancel);
+                okPanel.add(okPanel2, BorderLayout.EAST);
+                fnt.add(okPanel, BorderLayout.SOUTH);
+
+               
+                //fnt.pack();
+                fnt.setVisible(true);
+
+    }
+
+    @Override
     public void valueChanged(ListSelectionEvent lsv){
-        JOptionPane.showMessageDialog(null, myList.getSelectedValue());
-        val1.setText(myList.getSelectedValue().toString());
+       // val1.setText(myFontList.getSelectedValue().toString());
+        //JOptionPane.showMessageDialog(null, myFontList.getSelectedValue());
+       
+
+        
         
     }
 
@@ -724,7 +842,7 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
     
     private void updateStatus(int linenumber, int columnnumber, int word, String text){
         //create and add a status bar here
-        statusBar.setText("Line: "+ linenumber+ " Colomn: "+ columnnumber + " Characters: "+text.length() + " Words: "+word);
+        statusBar.setText("Line: "+ linenumber+ " Column: "+ columnnumber + " Characters: "+text.length() + " Words: "+word);
     }
     
     public static void main(String[] args) {
