@@ -26,7 +26,7 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
     int linenum = 1, word=1, columnnum=1, linenumber, columnnumber;
     String text="", words[];
     JPanel statusPanel;
-
+    UndoManager um = new UndoManager();
 
     public TextEditor(){
         frame = new JFrame();
@@ -196,10 +196,27 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
         undo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK));
         undo.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ae){
-                  
+                try {
+                    um.undo();
+                  } catch (Exception e) {
+                     e.printStackTrace();
+                  }
             }
         });
         editMenu.add(undo);
+
+        JMenuItem redo = new JMenuItem("Redo");
+        redo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_DOWN_MASK));
+        redo.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ae){
+                 try {
+                    um.redo();
+                 } catch (Exception e) {
+                     e.printStackTrace();
+                 }
+            }
+        });
+        editMenu.add(redo);
 
         editMenu.addSeparator();
 
@@ -493,6 +510,12 @@ public class TextEditor implements ActionListener, ListSelectionListener, CaretL
 
                 updateStatus(linenum,columnnum,word,text);
 
+            }
+        });
+
+        page.getDocument().addUndoableEditListener(new UndoableEditListener(){
+            public void undoableEditHappened(UndoableEditEvent e){
+                um.addEdit(e.getEdit());
             }
         });
         //frame.pack(); - this will  size the frame base on the component on it
